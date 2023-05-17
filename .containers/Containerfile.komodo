@@ -1,0 +1,44 @@
+FROM docker.io/debian:11
+
+RUN groupadd -r virtgroup
+RUN useradd -r -g virtgroup virtuser
+WORKDIR /home/virtuser
+
+RUN apt-get update -y
+
+# Install Required Dependencies
+RUN apt-get install -y build-essential pkg-config bsdmainutils \
+	libtool libsodium-dev libc6-dev libssl-dev libcurl4-gnutls-dev \
+	ncurses-dev zlib1g-dev cmake clang m4 automake autoconf g++-multilib \
+	python python3 python3-zmq curl wget jq git unzip libboost-system-dev \
+	libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev \
+	libboost-test-dev libboost-thread-dev
+
+# Install nanomsg
+RUN git clone https://github.com/nanomsg/nanomsg
+RUN cd nanomsg && cmake . -DNN_TESTS=OFF -DNN_ENABLE_DOC=OFF && make -j2 && make install && ldconfig
+
+## Clean the build source
+RUN rm -rf nanomsg
+
+# Install Komodo by compiling it from source
+
+## Clone the source, checkout master branch and compile
+RUN git clone https://github.com/KomodoPlatform/komodo
+RUN cd komodo && git checkout master && ./zcutil/fetch-params.sh && ./zcutil/build.sh -j$(nproc)
+RUN mv /root/.zcash-params /home/virtuser/.zcash-params
+
+## Copy binaries
+RUN cp /home/virtuser/komodo/src/komodo-cli /bin/komodo-cli
+RUN cp /home/virtuser/komodo/src/komodod /bin/komodod
+
+## Clean the build source
+RUN rm -rf komodo
+
+## Create the data dir
+RUN mkdir -p /home/virtuser/.komodo
+
+RUN chown -R virtuser:virtgroup /home/virtuser
+USER virtuser
+
+ENTRYPOINT ["komodod", "-printtoconsole"]
