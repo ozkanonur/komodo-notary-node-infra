@@ -40,5 +40,3 @@ RUN mkdir -p /home/virtuser/.komodo
 
 RUN chown -R virtuser:virtgroup /home/virtuser
 USER virtuser
-
-ENTRYPOINT ["komodod", "-printtoconsole"]
