@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: komodod-namespace
+  name: komodod-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: komodod-app
+  template:
+    metadata:
+      labels:
+        dep_version: "1"
+        app: komodod-app
+    spec:
+      containers:
+        - name: komodod-container
+          image: ozkanonur/komodod:latest
+          imagePullPolicy: Always
+          env:
+            - name: PRIVKEY
+              valueFrom:
+                secretKeyRef:
+                  name: komodod-secrets
+                  key: PRIVKEY
+            - name: PUBKEY
+              valueFrom:
+                secretKeyRef:
+                  name: komodod-secrets
+                  key: PUBKEY
+            - name: KOMODOD_RPC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: komodod-secrets
+                  key: KOMODOD_RPC_USER
+            - name: KOMODOD_RPC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: komodod-secrets
+                  key: KOMODOD_RPC_PASSWORD
+          volumeMounts:
+            - name: komodod-pv
+              mountPath: /home/virtuser/.komodo
+            - name: komodod-script-volume
+              mountPath: /komodod-script.sh
+              subPath: komodod-script.sh
+              readOnly: true
+          command: ["/bin/sh"]
+          args: ["/komodod-script.sh"]
+          readinessProbe:
+            exec:
+              command:
+                - komodo-cli
+                - getinfo
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
+          resources:
+            requests:
+              memory: "1500Mi"
+            limits:
+              memory: "10000Mi"
+      volumes:
+        - name: komodod-script-volume
+          configMap:
+            name: komodod-script
+        - name: komodod-pv
+          persistentVolumeClaim:
+            claimName: komodod-pvc

@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: komodod-namespace
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: komodod-secrets
+  namespace: komodod-namespace
+type: Opaque
+stringData:
+  PRIVKEY: ""
+  PUBKEY: ""
+  KOMODOD_RPC_USER: ""
+  KOMODOD_RPC_PASSWORD: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: komodod-script
+  namespace: komodod-namespace
+data:
+  komodod-script.sh: |
+    #!/bin/sh
+
+    cat <<EOF > /home/virtuser/.komodo/komodo.conf
+    rpcuser=$KOMODOD_RPC_USER
+    rpcpassword=$KOMODOD_RPC_PASSWORD
+    txindex=1
+    server=1
+    daemon=0
+    rpcworkqueue=256
+    rpcbind=127.0.0.1
+    rpcallowip=127.0.0.1
+    addnode=na.smk.dog
+    addnode=dev.smk.dog
+    addnode=na_3p.smk.dog
+    addnode=dev_3p.smk.dog
+    addnode=77.75.121.138
+    addnode=95.213.238.100
+    addnode=94.130.148.142
+    addnode=103.6.12.105
+    addnode=139.99.209.214
+    addnode=185.130.212.13
+    addnode=5.9.142.219
+    addnode=200.25.4.38
+    addnode=139.99.136.148
+    EOF
+
+    try_until_success() {
+        local cmd="$@"
+        while true; do
+            if $cmd; then
+                echo "-[[[$cmd]]]- successfully executed!"
+                break
+            fi
+            sleep 1
+        done
+    }
+
+    # Because komodod will attach to terminal, run this first as a background task in a loop
+    # that will run this command every second until the successful komodod initialization.
+    try_until_success komodo-cli importprivkey $PRIVKEY "" true $(komodo-cli getblockcount) &
+
+    komodod -printtoconsole -pubkey=$PUBKEY
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: komodod-namespace
+  name: komodod-pv
+spec:
+  capacity:
+    storage: 75Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  hostPath:
+    path: /data/komodod
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: komodod-namespace
+  name: komodod-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 75Gi
+  storageClassName: standard
