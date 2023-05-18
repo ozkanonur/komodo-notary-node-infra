@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: main-namespace
+  name: komodod-and-dpow
+spec:
+  containers:
+    # komodod
+    - name: komodod-container
+      image: ozkanonur/komodod:latest
+      imagePullPolicy: Always
+      env:
+        - name: PRIVKEY
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: PRIVKEY
+        - name: PUBKEY
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: PUBKEY
+        - name: KOMODOD_RPC_USER
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: KOMODOD_RPC_USER
+        - name: KOMODOD_RPC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: KOMODOD_RPC_PASSWORD
+      volumeMounts:
+        - name: komodod-pv
+          mountPath: /home/virtuser/.komodo
+        - name: komodod-script-volume
+          mountPath: /komodod-script.sh
+          subPath: komodod-script.sh
+          readOnly: true
+      command: ["/bin/sh"]
+      args: ["/komodod-script.sh"]
+      readinessProbe:
+        exec:
+          command:
+            - komodo-cli
+            - getinfo
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        failureThreshold: 30
+      resources:
+        requests:
+          memory: "1500Mi"
+        limits:
+          memory: "10000Mi"
+    # dpow
+    - name: dpow-container
+      image: ozkanonur/dpow:latest
+      imagePullPolicy: Always
+      env:
+        - name: PRIVKEY
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: PRIVKEY
+        - name: PUBKEY
+          valueFrom:
+            secretKeyRef:
+              name: main-secrets
+              key: PUBKEY
+      volumeMounts:
+        - name: dpow-script-volume
+          mountPath: /dpow-script.sh
+          subPath: dpow-script.sh
+          readOnly: true
+      command: ["/bin/sh"]
+      args: ["/dpow-script.sh"]
+      resources:
+        requests:
+          memory: "250Mi"
+        limits:
+          memory: "1000Mi"
+  volumes:
+    - name: dpow-script-volume
+      configMap:
+        name: dpow-script
+    - name: komodod-script-volume
+      configMap:
+        name: komodod-script
+    - name: komodod-pv
+      persistentVolumeClaim:
+        claimName: komodod-pvc

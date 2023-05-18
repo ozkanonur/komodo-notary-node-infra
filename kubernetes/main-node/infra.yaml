@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: komodod-namespace
+  name: main-namespace
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: komodod-secrets
-  namespace: komodod-namespace
+  name: main-secrets
+  namespace: main-namespace
 type: Opaque
 stringData:
   PRIVKEY: ""
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: komodod-script
-  namespace: komodod-namespace
+  namespace: main-namespace
 data:
   komodod-script.sh: |
     #!/bin/sh
@@ -66,9 +66,21 @@ data:
     komodod -printtoconsole -pubkey=$PUBKEY
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dpow-script
+  namespace: main-namespace
+data:
+  dpow-script.sh: |
+    #!/bin/sh
+
+    # TODO
+    tail -f /dev/null
+---
+apiVersion: v1
 kind: PersistentVolume
 metadata:
-  namespace: komodod-namespace
+  namespace: main-namespace
   name: komodod-pv
 spec:
   capacity:
@@ -84,7 +96,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  namespace: komodod-namespace
+  namespace: main-namespace
   name: komodod-pvc
 spec:
   accessModes:
