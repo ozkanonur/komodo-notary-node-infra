@@ -20,3 +20,18 @@ jobs:
         run: |
           docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}  docker.io
           docker push ozkanonur/komodod:latest
+
+  dpow:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build the container image
+        run: docker build --no-cache -t ozkanonur/dpow:latest -f .containers/Containerfile.dpow .
+
+      - name: Push the container image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        run: |
+          docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}  docker.io
+          docker push ozkanonur/dpow:latest
